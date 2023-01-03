@@ -3839,7 +3839,7 @@ void CWriter::Write(const ConvertExpr& expr) {
     case Opcode::I64ReinterpretF64:
       WriteSimpleUnaryExpr(expr.opcode, "i64_reinterpret_f64");
       break;
-    
+
     case Opcode::I32X4TruncSatF32X4S:
       WriteSimpleUnaryExpr(expr.opcode, "simde_wasm_i32x4_trunc_sat_f32x4");
       break;
@@ -4414,7 +4414,7 @@ void CWriter::Write(const SimdLoadLaneExpr& expr) {
   Memory* memory = module_->memories[module_->GetMemoryIndex(expr.memidx)];
   Type result_type = expr.opcode.GetResultType();
   Write(StackVar(1, result_type), " = ", func, expr.val, "(",
-        ExternalInstancePtr(ModuleFieldType::Memory, memory->name), ", (u64)(", 
+        ExternalInstancePtr(ModuleFieldType::Memory, memory->name), ", (u64)(",
         StackVar(1), ")");
 
   if (expr.offset != 0)
@@ -4440,7 +4440,7 @@ void CWriter::Write(const SimdStoreLaneExpr& expr) {
   // clang-format on
   Memory* memory = module_->memories[module_->GetMemoryIndex(expr.memidx)];
 
-  Write(func, expr.val, "(", 
+  Write(func, expr.val, "(",
         ExternalInstancePtr(ModuleFieldType::Memory, memory->name), ", (u64)(",
         StackVar(1), ")");
 
@@ -4489,7 +4489,7 @@ void CWriter::Write(const LoadSplatExpr& expr) {
   // clang-format on
   Type result_type = expr.opcode.GetResultType();
   Write(StackVar(0, result_type), " = ", func, "(",
-        ExternalInstancePtr(ModuleFieldType::Memory, memory->name), ", (u64)(", 
+        ExternalInstancePtr(ModuleFieldType::Memory, memory->name), ", (u64)(",
         StackVar(0), ")");
   if (expr.offset != 0)
     Write(" + ", expr.offset);
@@ -4514,7 +4514,7 @@ void CWriter::Write(const LoadZeroExpr& expr) {
 
   Type result_type = expr.opcode.GetResultType();
   Write(StackVar(0, result_type), " = ", func, "(",
-        ExternalInstancePtr(ModuleFieldType::Memory, memory->name), ", (u64)(", 
+        ExternalInstancePtr(ModuleFieldType::Memory, memory->name), ", (u64)(",
         StackVar(0), ")");
   if (expr.offset != 0)
     Write(" + ", expr.offset);
