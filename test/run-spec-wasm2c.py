@@ -577,7 +577,7 @@ def main(args):
         cwriter = CWriter(spec_json, prefix, output, out_dir)
 
         o_filenames = []
-        cflags = ['-I%s' % options.wasmrt_dir]
+        cflags = ['-I%s' % options.wasmrt_dir, '-I%s' % options.simde_dir]
         if options.enable_memory64:
             if IS_WINDOWS:
                 sys.stderr.write('skipping: wasm2c+memory64 is not yet supported under msvc\n')
