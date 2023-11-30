@@ -105,7 +105,7 @@ extern "C" {
  *
  * BOUNDS_CHECK: memory accesses are checked with explicit bounds checks.
  *
- * This defaults to GUARD_PAGES as this is the fasest option, iff the
+ * This defaults to GUARD_PAGES as this is the fastest option, iff the
  * requirements of GUARD_PAGES --- 64-bit platforms, MMAP allocation strategy,
  * no 64-bit memories --- are met. This falls back to BOUNDS otherwise.
  */
