@@ -30,6 +30,10 @@
 #include <unistd.h>
 #endif
 
+#if !WASM_RT_USE_STACK_DEPTH_COUNT
+#include <signal.h>
+#endif
+
 #ifdef _WIN32
 #include <windows.h>
 #else
