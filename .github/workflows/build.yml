@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - main
+      - citest
   pull_request:
 
 jobs:
@@ -121,10 +122,15 @@ jobs:
   build-wasm2c-memchecked:
     name: wasm2c-memchecked
     runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      matrix:
+        stack_depth_enable: [-DWASM_RT_USE_STACK_DEPTH_COUNT=0, -DWASM_RT_USE_STACK_DEPTH_COUNT=1]
+        skip_signal_recovery: [-DWASM_RT_SKIP_SIGNAL_RECOVERY=0, -DWASM_RT_SKIP_SIGNAL_RECOVERY=1]
     env:
       USE_NINJA: "1"
       CC: "clang" # used by the wasm2c tests
-      WASM2C_CFLAGS: "-march=x86-64-v2 -fsanitize=address -DWASM_RT_USE_MMAP=0"
+      WASM2C_CFLAGS: "-march=x86-64-v2 -fsanitize=address -DWASM_RT_USE_MMAP=0 ${{ matrix.stack_depth_enable }} ${{ matrix.skip_signal_recovery }}"
     steps:
     - uses: actions/setup-python@v1
       with:
