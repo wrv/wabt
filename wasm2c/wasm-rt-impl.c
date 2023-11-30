@@ -30,10 +30,6 @@
 #include <unistd.h>
 #endif
 
-#if !WASM_RT_USE_STACK_DEPTH_COUNT
-#include <signal.h>
-#endif
-
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -167,6 +163,15 @@ static void os_print_last_error(const char* msg) {
   perror(msg);
 }
 
+#if WASM_RT_INSTALL_SIGNAL_HANDLER
+static void os_signal_handler(int sig, siginfo_t* si, void* unused) {
+  if (si->si_code == SEGV_ACCERR) {
+    wasm_rt_trap(WASM_RT_TRAP_OOB);
+  } else {
+    wasm_rt_trap(WASM_RT_TRAP_EXHAUSTION);
+  }
+}
+
 #if !WASM_RT_USE_STACK_DEPTH_COUNT
 /* These routines set up an altstack to handle SIGSEGV from stack overflow. */
 static bool os_has_altstack_installed() {
@@ -237,16 +242,7 @@ static void os_disable_and_deallocate_altstack(void) {
   assert(!os_has_altstack_installed());
   free(g_alt_stack);
 }
-#endif /* !WASM_RT_USE_STACK_DEPTH_COUNT */
-
-#if WASM_RT_INSTALL_SIGNAL_HANDLER
-static void os_signal_handler(int sig, siginfo_t* si, void* unused) {
-  if (si->si_code == SEGV_ACCERR) {
-    wasm_rt_trap(WASM_RT_TRAP_OOB);
-  } else {
-    wasm_rt_trap(WASM_RT_TRAP_EXHAUSTION);
-  }
-}
+#endif
 
 static void os_install_signal_handler(void) {
   struct sigaction sa;
@@ -291,12 +287,12 @@ void wasm_rt_init(void) {
 }
 
 bool wasm_rt_is_initialized(void) {
+#if WASM_RT_INSTALL_SIGNAL_HANDLER
 #if !WASM_RT_USE_STACK_DEPTH_COUNT
   if (!os_has_altstack_installed()) {
     return false;
   }
 #endif
-#if WASM_RT_INSTALL_SIGNAL_HANDLER
   return g_signal_handler_installed;
 #else
   return true;
