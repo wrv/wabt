@@ -520,7 +520,7 @@ def main(args):
     parser.set_defaults(compile=True)
     parser.add_argument('--no-run', help='don\'t run the compiled executable',
                         dest='run', action='store_false')
-    parser.add_argument('-v', '--verbose', help='print more diagnotic messages.',
+    parser.add_argument('-v', '--verbose', help='print more diagnostic messages.',
                         action='store_true')
     parser.add_argument('--no-error-cmdline',
                         help='don\'t display the subprocess\'s commandline when '

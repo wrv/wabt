@@ -13,116 +13,6 @@
 #include "wasm-rt-impl.h"
 #include "wasm-rt-exceptions.h"
 
-#if WASM_RT_TEST_HANDLER
-
-#include <signal.h>
-static WASM_RT_THREAD_LOCAL void* g_alt_stack = NULL;
-
-/* These routines set up an altstack to handle SIGSEGV from stack overflow. */
-static bool os_has_altstack_installed() {
-  /* check for altstack already in place */
-  stack_t ss;
-  if (sigaltstack(NULL, &ss) != 0) {
-    perror("sigaltstack failed");
-    abort();
-  }
-
-  return !(ss.ss_flags & SS_DISABLE);
-}
-
-static void os_allocate_and_install_altstack(void) {
-  /* verify altstack not already allocated */
-  assert(!g_alt_stack &&
-         "wasm-rt error: tried to re-allocate thread-local alternate stack");
-
-  /* We could check and warn if an altstack is already installed, but some
-   * sanitizers install their own altstack, so this warning would fire
-   * spuriously and break the test outputs. */
-
-  /* allocate altstack */
-  g_alt_stack = malloc(SIGSTKSZ);
-  if (g_alt_stack == NULL) {
-    perror("malloc failed");
-    abort();
-  }
-
-  /* install altstack */
-  stack_t ss;
-  ss.ss_sp = g_alt_stack;
-  ss.ss_flags = 0;
-  ss.ss_size = SIGSTKSZ;
-  if (sigaltstack(&ss, NULL) != 0) {
-    perror("sigaltstack failed");
-    abort();
-  }
-}
-
-static void os_disable_and_deallocate_altstack(void) {
-  /* in debug build, verify altstack allocated */
-  assert(g_alt_stack &&
-         "wasm-rt error: thread-local alternate stack not allocated");
-
-  /* verify altstack was still in place */
-  stack_t ss;
-  if (sigaltstack(NULL, &ss) != 0) {
-    perror("sigaltstack failed");
-    abort();
-  }
-
-  if ((!g_alt_stack) || (ss.ss_flags & SS_DISABLE) ||
-      (ss.ss_sp != g_alt_stack) || (ss.ss_size != SIGSTKSZ)) {
-#ifndef NDEBUG
-    fprintf(stderr,
-            "wasm-rt warning: alternate stack was modified unexpectedly\n");
-#endif
-    return;
-  }
-
-  /* disable and free */
-  ss.ss_flags = SS_DISABLE;
-  if (sigaltstack(&ss, NULL) != 0) {
-    perror("sigaltstack failed");
-    abort();
-  }
-  assert(!os_has_altstack_installed());
-  free(g_alt_stack);
-}
-
-static void os_signal_handler(int sig, siginfo_t* si, void* unused) {
-  if (si->si_code == SEGV_ACCERR) {
-    wasm_rt_trap(WASM_RT_TRAP_OOB);
-  } else {
-    wasm_rt_trap(WASM_RT_TRAP_EXHAUSTION);
-  }
-}
-
-static void os_install_signal_handler(void) {
-  struct sigaction sa;
-  memset(&sa, '\0', sizeof(sa));
-  sa.sa_flags = SA_SIGINFO;
-  sa.sa_flags |= SA_ONSTACK;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_sigaction = os_signal_handler;
-
-  /* Install SIGSEGV and SIGBUS handlers, since macOS seems to use SIGBUS. */
-  if (sigaction(SIGSEGV, &sa, NULL) != 0 || sigaction(SIGBUS, &sa, NULL) != 0) {
-    perror("sigaction failed");
-    abort();
-  }
-}
-
-static void os_cleanup_signal_handler(void) {
-  /* Undo what was done in os_install_signal_handler */
-  struct sigaction sa;
-  memset(&sa, '\0', sizeof(sa));
-  sa.sa_handler = SIG_DFL;
-  if (sigaction(SIGSEGV, &sa, NULL) != 0 || sigaction(SIGBUS, &sa, NULL)) {
-    perror("sigaction failed");
-    abort();
-  }
-}
-
-#endif
 
 // like is_equal_TYPE below, always use unsigned for these
 #define v128_i8x16_extract_lane simde_wasm_u8x16_extract_lane
@@ -474,11 +364,69 @@ static void init_spectest_module(w2c_spectest* instance) {
   wasm_rt_allocate_funcref_table(&instance->spectest_table, 10, 20);
 }
 
+// POSIX-only test config where embedder handles signals instead of w2c runtime
+#ifdef WASM2C_TEST_EMBEDDER_SIGNAL_HANDLING
+#include <signal.h>
+
+static void posix_signal_handler(int sig, siginfo_t* si, void* unused) {
+  wasm_rt_trap((si->si_code == SEGV_ACCERR) ? WASM_RT_TRAP_OOB
+                                            : WASM_RT_TRAP_EXHAUSTION);
+}
+
+void posix_install_signal_handler(void) {
+  /* install altstack */
+  stack_t ss;
+  ss.ss_sp = malloc(SIGSTKSZ);
+  ss.ss_flags = 0;
+  ss.ss_size = SIGSTKSZ;
+  if (sigaltstack(&ss, NULL) != 0) {
+    perror("sigaltstack failed");
+    abort();
+  }
+
+  /* install signal handler */
+  struct sigaction sa;
+  memset(&sa, '\0', sizeof(sa));
+  sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_sigaction = posix_signal_handler;
+  if (sigaction(SIGSEGV, &sa, NULL) != 0 || sigaction(SIGBUS, &sa, NULL) != 0) {
+    perror("sigaction failed");
+    abort();
+  }
+}
+
+static void posix_cleanup_signal_handler(void) {
+    /* Undo what was done in posix_install_signal_handler */
+  struct sigaction sa;
+  memset(&sa, '\0', sizeof(sa));
+  sa.sa_handler = SIG_DFL;
+  if (sigaction(SIGSEGV, &sa, NULL) != 0 || sigaction(SIGBUS, &sa, NULL)) {
+    perror("sigaction failed");
+    abort();
+  }
+
+  /* verify altstack was still in place */
+  stack_t ss;
+  if (sigaltstack(NULL, &ss) != 0) {
+    perror("sigaltstack failed");
+    abort();
+  }
+
+  /* disable and free */
+  ss.ss_flags = SS_DISABLE;
+  if (sigaltstack(&ss, NULL) != 0) {
+    perror("sigaltstack failed");
+    abort();
+  }
+  free(ss.ss_sp);
+}
+
+#endif
+
 int main(int argc, char** argv) {
-// Install a stack-depth counter
-#if WASM_RT_TEST_HANDLER
-  os_allocate_and_install_altstack();
-  os_install_signal_handler();
+#ifdef WASM2C_TEST_EMBEDDER_SIGNAL_HANDLING
+  posix_install_signal_handler();
 #endif
 
   wasm_rt_init();
@@ -486,10 +434,8 @@ int main(int argc, char** argv) {
   run_spec_tests();
   printf("%u/%u tests passed.\n", g_tests_passed, g_tests_run);
   wasm_rt_free();
-
-#if WASM_RT_TEST_HANDLER
-  os_cleanup_signal_handler();
-  os_disable_and_deallocate_altstack();
+#ifdef WASM2C_TEST_EMBEDDER_SIGNAL_HANDLING
+  posix_cleanup_signal_handler();
 #endif
   return g_tests_passed != g_tests_run;
 }
