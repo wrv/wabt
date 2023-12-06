@@ -120,6 +120,14 @@ static void os_print_last_error(const char* msg) {
   }
 }
 
+#if !WASM_RT_USE_STACK_DEPTH_COUNT
+static bool os_has_altstack_installed() {
+  // Note: This is a placeholder for the call from 
+  // wasm_rt_is_initialized()
+  return true;
+}
+#endif
+
 #if WASM_RT_INSTALL_SIGNAL_HANDLER
 
 static LONG os_signal_handler(PEXCEPTION_POINTERS info) {
