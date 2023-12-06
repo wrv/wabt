@@ -20,7 +20,7 @@ jobs:
     env:
       USE_NINJA: "1"
       CC: "clang" # used by the wasm2c tests
-      WASM2C_CFLAGS: "-march=x86-64-v2 -fsanitize=address -DWASM2C_TEST_EMBEDDER_SIGNAL_HANDLING -DWASM_RT_USE_MMAP=0 ${{ matrix.stack_depth_enable }} ${{ matrix.skip_signal_recovery }}"
+      WASM2C_CFLAGS: "-march=x86-64-v2 -fsanitize=address -DWASM2C_TEST_EMBEDDER_SIGNAL_HANDLING -DWASM_RT_USE_MMAP=1 ${{ matrix.stack_depth_enable }} ${{ matrix.skip_signal_recovery }}"
     steps:
     - uses: actions/setup-python@v1
       with:

@@ -600,6 +600,9 @@ def main(args):
             if IS_WINDOWS:
                 sys.stderr.write('skipping: wasm2c+memory64 is not yet supported under msvc\n')
                 return SKIPPED
+            if "-DWASM_RT_USE_MMAP" in options.cflags or "-DWASM_RT_USE_MMAP=1" in options.cflags:
+                sys.stderr.write('skipping: "memory64 is not yet compatible with WASM_RT_USE_MMAP\n')
+                return SKIPPED
             cflags.append('-DSUPPORT_MEMORY64=1')
 
         for i, wasm_filename in enumerate(cwriter.GetModuleFilenames()):

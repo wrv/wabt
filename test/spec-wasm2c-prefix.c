@@ -13,7 +13,6 @@
 #include "wasm-rt-impl.h"
 #include "wasm-rt-exceptions.h"
 
-
 // like is_equal_TYPE below, always use unsigned for these
 #define v128_i8x16_extract_lane simde_wasm_u8x16_extract_lane
 #define v128_u8x16_extract_lane simde_wasm_u8x16_extract_lane
